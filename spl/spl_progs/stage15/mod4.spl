@@ -1,0 +1,25 @@
+//teminal write
+
+alias fno R1;
+alias currentPID R2;
+
+if((fno ==3)) then
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	R1=8;//fno for acquire
+	R2=currentPID;//pid
+	
+	call MOD_0;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	print R3;
+	
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	R1=9;//RELEASE TERMINAL
+	R2=currentPID;
+	
+	call MOD_0;
+	
+	//return value in ->R0;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	return;
+endif;
+return;

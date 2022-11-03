@@ -1,0 +1,8 @@
+alias Counter R0;
+Counter =0;
+while(Counter<=20) do
+	if(Counter%2!=0)then
+		print Counter;
+	endif;
+	Counter=Counter+1;
+endwhile;

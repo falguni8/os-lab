@@ -1,0 +1,142 @@
+//int9
+
+//save usersp
+alias userSP R0;
+userSP=SP;
+
+//set mode flag
+[PROCESS_TABLE +[SYSTEM_STATUS_TABLE +1]*16 +9]=9;//exec system call no
+
+
+[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13]=SP;
+
+// Setting SP to UArea Page number * 512 - 1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+//to get name of the req file
+alias name R1;
+name=(userSP-4);
+
+alias phyadd R2;
+alias filename R3;
+phyadd=([PTBR +2*(name)/512]*512) +(name)%512;
+filename=[phyadd];
+
+
+alias i R4;
+alias flag R5;
+i=0;
+flag=0;
+while(i<MAX_FILE_NUM) do
+	if([INODE_TABLE +i*16 +1]==filename && [INODE_TABLE+i*16+0]==EXEC) then
+		flag=1;
+		break;
+	endif;
+	i=i+1;
+endwhile;
+
+if(flag==0) then
+	//if req file is not found in inode table
+	alias physicalAddrRetVal R6;
+	physicalAddrRetVal=([PTBR+2*(userSP-1)/512]*512)+((userSP-1)%512);
+	[physicalAddrRetVal] = -1;
+	SP=[PROCESS_TABLE+([SYSTEM_STATUS_TABLE+1]*16)+13];
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+	ireturn;
+	
+endif;
+
+multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+R1=3;//exit process
+R2=[SYSTEM_STATUS_TABLE+1];
+call MOD_1;//call exit fn
+multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+
+
+[MEMORY_FREE_LIST+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 +11]]=1;
+//increasing to indicate that given user page was released!
+
+//DECREASE MEM FREE COUNT IN SYSTEM STATUS TABLE
+[SYSTEM_STATUS_TABLE +2]=[SYSTEM_STATUS_TABLE+2]-1;
+
+
+SP=[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 +11]*512-1;//setting sp to start of the new process having same pid
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+4]=RUNNING;//changing state
+
+//update state and store inode index in process table
+[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16 +7]=i;
+
+alias ptbr R6;
+ptbr=[PROCESS_TABLE+([SYSTEM_STATUS_TABLE+1]*16)+14];
+//allocate page table for new process
+//Library
+[ptbr+0] = 63;
+[ptbr+1] = "0100";
+[ptbr+2] = 64;
+[ptbr+3] = "0100";
+
+//call get free page fn to allocate heap and stack
+
+//heap-2 page
+multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[ptbr+4]=R0;
+[ptbr+5]="0110";
+multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+
+multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[ptbr+6]=R0;
+[ptbr+7]="0110";
+multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+
+//stack-2 page
+multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[ptbr+16]=R0;
+[ptbr+17]="0110";
+multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+
+multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[ptbr+18]=R0;
+[ptbr+19]="0110";
+multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+
+
+//no of blocks occupied by the process
+alias j R7;
+j=0;
+while(j<4) do
+	if(([INODE_TABLE+i*16+8+j]!=-1)) then
+		multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+		R1=GET_FREE_PAGE;
+		call MOD_2;//call get free page
+		[ptbr+8+2*(j)]=R0;
+		[ptbr+8+2*(j)+1]="0100";
+		loadi(R0,[INODE_TABLE+i*16+8+j]);//load code blocks using loadi statement
+		multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	endif;
+	j=j+1;
+endwhile;
+
+
+
+
+//STORE entry IP value
+[[ptbr+16]*512]=[[ptbr+8]*512+1];
+breakpoint;
+//set MODE flag
+[PROCESS_TABLE +[SYSTEM_STATUS_TABLE+1]*16 +9]=0;
+SP=8*512;
+
+ireturn;
+
+
+
+
+

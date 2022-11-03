@@ -1,0 +1,62 @@
+//set mode flag
+breakpoint;
+[PROCESS_TABLE +[SYSTEM_STATUS_TABLE +1]*16 +9]=5;
+
+//save usersp
+
+[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13]=SP;
+
+alias userSP R0;
+userSP=SP;
+
+
+// Setting SP to UArea Page number * 512 - 1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+
+//check arg1 is file descriptor or not
+//convert logical address to physical address
+alias physicalpgno R1;
+alias offset R2;
+alias filedesphyadd R3;
+physicalpgno=[PTBR +2 *((userSP-4)/512)];
+offset=(userSP-4)%512;
+filedesphyadd=(physicalpgno*512)+offset;
+alias fileDescriptor R4;
+fileDescriptor=[filedesphyadd];
+
+
+
+if(fileDescriptor!=-2)
+then
+	alias physicalAddrRetVal R5;
+	physicalAddrRetVal=([PTBR+2*(userSP-1)/512]*512)+((userSP-1)%512);
+	[physicalAddrRetVal] = -1;
+else
+	alias word R5;//arg2
+	word = [[PTBR+2*((userSP-3)/512)]*512+((userSP-3)%512)];
+	
+	
+	//print word;
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	R1=3;//FUCNTION NUM OF TERMINAL WRITE
+	R2=[SYSTEM_STATUS_TABLE+1];//CURRENT PID
+	R3=word;// TO BE PRINTED WORD
+	
+	call MOD_4;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	
+	
+	alias physicalAddrRetVal R6;
+	physicalAddrRetVal=([PTBR+2*(userSP-1)/512]*512)+((userSP-1)%512);
+	[physicalAddrRetVal] = 0;
+
+
+endif;
+
+SP=[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13];
+//mode->0 process running in 0
+[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+
+ireturn;
+

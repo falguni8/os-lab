@@ -1,0 +1,60 @@
+//teminal write
+
+alias fno R1;
+alias currentPID R2;
+
+if((fno ==3)) then
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	R1=8;//fno for acquire
+	R2=currentPID;//pid
+	
+	call MOD_0;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	print R3;
+	
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	R1=9;//RELEASE TERMINAL
+	R2=currentPID;
+	
+	call MOD_0;
+	
+	//return value in ->R0;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	return;
+
+else
+
+	if((fno ==4)) then
+		multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+		R1=8;//fno for acquire
+		currentPID=[SYSTEM_STATUS_TABLE+1];
+		R2=currentPID;//pid
+		
+		call MOD_0;
+		multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+		
+		read;
+		[PROCESS_TABLE +currentPID*16 +4]=WAIT_TERMINAL;
+		
+		//context switch
+						multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+		call MOD_5;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+
+		///R3->logical address of word
+		alias phyadd R4;
+		alias wordAddr R5;
+		
+		phyadd=[PTBR +2*(R3/512)]*512+(R3%512);
+		R3 = [phyadd];
+		wordAddr=[PTBR +2*(R3/512)]*512+(R3%512);
+		
+		[wordAddr]=[PROCESS_TABLE +(currentPID*16)+8];
+		return;
+		
+	else
+		return;
+	endif;
+	
+endif;
+

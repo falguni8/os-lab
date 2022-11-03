@@ -1,0 +1,29 @@
+int main()
+{
+    decl
+        int a,b,t;
+        int k;
+    enddecl
+    begin
+    	a=2;
+    	k=0;
+        while(a<=100) do
+            b=2;
+            while(b<(a/2)) do
+            	if((a%b)==0) then
+            		k=1;
+            		break;
+            	endif;
+            	b=b+1;
+            endwhile;
+            
+            
+            if((k==0)) then
+            	t=exposcall("Write",-2,a);
+            endif;
+            a=a+1;
+        endwhile;
+        return 0;
+    end
+}
+

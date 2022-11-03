@@ -1,0 +1,12 @@
+int main(){
+decl
+	str s;
+	int t;
+enddecl
+begin
+	t=exposcall("Write",-2,"Filename");
+	t=exposcall("Read",-1,s);
+	t=exposcall("Exec",s);
+	return 0;	
+end
+}

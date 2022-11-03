@@ -1,0 +1,81 @@
+//teminal write
+
+breakpoint;
+alias fno R1;
+alias currentPID R2;
+
+if((fno ==3)) then
+	multipush(R1,R2,R3);
+	R1=8;//fno for acquire
+	R2=currentPID;//pid
+	
+	call MOD_0;
+	multipop(R1,R2,R3);
+	print R3;
+	
+	multipush(R1,R2,R3);
+	R1=9;//RELEASE TERMINAL
+	R2=currentPID;
+	
+	call MOD_0;
+	
+	//return value in ->R0;
+	multipop(R1,R2,R3);
+	return;
+endif;
+//read
+if((fno ==4)) then
+		multipush(R1,R2,R3);
+		R1=8;//fno for acquire
+		currentPID=[SYSTEM_STATUS_TABLE+1];
+		R2=currentPID;//pid
+		
+		call MOD_0;
+		multipop(R1,R2,R3);
+		
+		read;
+		[PROCESS_TABLE +currentPID*16 +4]=WAIT_TERMINAL;
+		
+		//context switch
+		multipush(R1,R2,R3);
+		call MOD_5;
+	multipop(R1,R2,R3);
+
+		///R3->logical address of word
+		alias phyadd R4;
+		alias wordAddr R5;
+		
+		phyadd=[PTBR +2*(R3/512)]*512+(R3%512);
+		R3 = [phyadd];
+		wordAddr=[PTBR +2*(R3/512)]*512+(R3%512);
+		
+		[wordAddr]=[PROCESS_TABLE +(currentPID*16)+8];
+		return;
+endif;
+//disk load
+if((fno==2)) then
+	alias mempgno R3;
+	alias diskblockno R4;
+	multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	R1=3;
+	R2=currentPID;
+	call MOD_0;
+	multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+	//set disk status table
+	[DISK_STATUS_TABLE+0]=1;//make it busy
+	[DISK_STATUS_TABLE+1]=0;//load=0;
+	[DISK_STATUS_TABLE+2]=mempgno;//pageno
+	[DISK_STATUS_TABLE+3]=diskblockno;//block no
+	[DISK_STATUS_TABLE+4]=currentPID;
+	
+	//isssue load statement
+	
+	load(mempgno,diskblockno);
+	
+	//set state of process as WAIT_SDISK
+	[PROCESS_TABLE+currentPID*16+4]=WAIT_DISK;
+	call MOD_5;
+	return;
+endif;
+return;
+

@@ -1,0 +1,34 @@
+//save usersp
+
+[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13]=SP;
+
+alias userSP R0;
+userSP=SP;
+
+
+// Setting SP to UArea Page number * 512 - 1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+backup;
+
+alias pid R1;
+pid=[TERMINAL_STATUS_TABLE+1];
+
+alias process_table_entry R2;
+
+process_table_entry=PROCESS_TABLE+pid*16;
+
+[process_table_entry +8]=P0;//buffer
+
+multipush(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+R2=pid;
+R1=9;
+
+
+call MOD_0;
+multipop(R0,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15);
+restore;
+
+SP=[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13];
+ireturn;
+
