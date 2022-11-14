@@ -68,9 +68,6 @@ loadi(60,4);
 loadi(6,19);
 loadi(7,20);
 
-[TERMINAL_STATUS_TABLE]=0;
-
-
 //setting pagetable for init
 
 PTBR=PAGE_TABLE_BASE+20;
@@ -125,7 +122,7 @@ PTLR=10;
 alias i R0;
 i=0;
 while(i<MAX_MEM_PAGE) do
-	if(i<83) then
+	if(i<86) then
 		[MEMORY_FREE_LIST+i]=1;
 	else
 		[MEMORY_FREE_LIST+i]=0;
@@ -133,18 +130,19 @@ while(i<MAX_MEM_PAGE) do
 	i=i+1;
 endwhile;
 
+[TERMINAL_STATUS_TABLE+0]=0;
 //initialise wait mem count to 0 memfreecount to no of free pages in System status table
-
+[SYSTEM_STATUS_TABLE+1]=0;
 [SYSTEM_STATUS_TABLE+3]=0;//WAIT MEM COUNT
-[SYSTEM_STATUS_TABLE+2]=127-83+1;
+[SYSTEM_STATUS_TABLE+2]=42;
 
-[DISK_STATUS_TABLE]=0;
+[DISK_STATUS_TABLE+0]=0;
 
 //initialise per process table for init
 
-i=496;
-while(i<512) do
-	[80*512+i]=-1;
+i=1;
+while(i<=8) do
+	[81*512-2*i]=-1;
 	i=i+1;
 endwhile;
 

@@ -1,0 +1,20 @@
+//set mode flag
+[PROCESS_TABLE +[SYSTEM_STATUS_TABLE +1]*16 +9]=10;//exit system call no
+
+alias userSP R0;
+userSP=SP;
+[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13]=SP;
+
+// Setting SP to UArea Page number * 512 - 1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+multipush(R0);
+R1=EXIT_PROCESS;
+R2=[SYSTEM_STATUS_TABLE+1];
+call MOD_1;
+multipop(R0);
+
+multipush(R0);
+call MOD_5;
+multipop(R0);
+

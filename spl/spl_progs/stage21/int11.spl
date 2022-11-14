@@ -1,0 +1,79 @@
+//system call no Sp-5
+[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13]=SP;
+
+// Setting SP to UArea Page number * 512 - 1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+
+alias userSp R0;
+userSp = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 13];
+
+alias syscall R1;
+syscall=[[PTBR+2*(userSp-5)/512] +((userSp-5)%512)];
+
+//wait
+if(syscall==INT_WAIT) then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 9] = 13;
+	//pid -arg1
+	//usersp-3
+	alias pid R2;
+	pid=[[PTBR+2*(userSp-4)/512] +((userSp-4)%512)];
+	if(pid>=16 || pid<1 || pid==[SYSTEM_STATUS_TABLE+1] || [PROCESS_TABLE +pid*16+4]==TERMINATED)then
+		//return value =-1
+		[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9] = 0;
+		[[PTBR + 2*((userSp-1)/512)]*512 + (userSp-1) % 512] = -1;
+		SP = userSp;
+		breakpoint;
+		ireturn;
+	endif;
+	
+	//change state to rUNINg
+	[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+4]=WAIT_PROCESS;
+	[PROCESS_TABLE+[SYSTEM_STATUS_TABLE+1]*16+5]=pid;
+	
+	multipush(R0,R1,R2);
+	call MOD_5;
+	multipop(R0,R1,R2);
+	
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE +1]*16 + 9] = 0;
+	SP = userSp;
+	ireturn;
+endif;
+
+
+if(syscall == INT_SIGNAL) then
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 9]=14;
+	alias i R10;
+	i=1;
+	while((i<MAX_PROC_NUM))do
+		if([PROCESS_TABLE +i*16 +4]==WAIT_PROCESS && [PROCESS_TABLE +i*16+5]==[SYSTEM_STATUS_TABLE+1]) then
+			[PROCESS_TABLE +i*16 +4]=RUNNING;
+		endif;
+		i=i+1;
+	endwhile;
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE+1]*16 + 9] = 0;	
+	SP = userSp;
+	ireturn;
+endif;
+
+if(syscall==INT_GETPID) then
+	[[PTBR +2*((userSp-1)/512)]*512 +(userSp-1)%512]=[SYSTEM_STATUS_TABLE+1];
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE +1]*16 + 9] = 0;
+	[[PTBR + 2*((userSp-1)/512)]*512 + (userSp-1) % 512] = 0;
+	SP=userSp;
+	ireturn;
+endif;
+
+if(syscall==INT_GETPPID) then
+	[[PTBR +2*((userSp-1)/512)]*512 +(userSp-1)%512]=[PROCESS_TABLE +[SYSTEM_STATUS_TABLE+1]*16+2];
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE +1]*16 + 9] = 0;
+	SP=userSp;
+	ireturn;
+endif;
+
+SP=userSp;
+breakpoint;
+ireturn;
+	
+	
+	

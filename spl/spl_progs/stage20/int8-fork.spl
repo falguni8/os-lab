@@ -1,0 +1,209 @@
+//set mode flag
+[PROCESS_TABLE +[SYSTEM_STATUS_TABLE +1]*16 +9]=8;//fork system call no
+
+
+[PROCESS_TABLE +([SYSTEM_STATUS_TABLE +1]*16) +13]=SP;
+
+// Setting SP to UArea Page number * 512 - 1
+SP = [PROCESS_TABLE + ([SYSTEM_STATUS_TABLE + 1] * 16) + 11] * 512 - 1;
+
+alias userSP R0;
+R0 = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1]*16 + 13];
+
+alias currentPID R10;
+currentPID = [SYSTEM_STATUS_TABLE + 1];
+
+//get newpid for the child;
+alias cpid R11;
+
+multipush(R0);
+R1=GET_PCB_ENTRY;
+call MOD_1;
+cpid=R0;
+multipop(R0);
+
+//if no free process table pid==-1
+
+if(cpid==-1) then
+	alias physicalAddrRetVal R6;
+	physicalAddrRetVal=([PTBR+2*(userSP-1)/512]*512)+((userSP-1)%512);
+	[physicalAddrRetVal] = -1;
+	SP=[PROCESS_TABLE+([SYSTEM_STATUS_TABLE+1]*16)+13];
+	[PROCESS_TABLE + [SYSTEM_STATUS_TABLE + 1] * 16 + 9] = 0;
+	ireturn;
+endif;
+
+//parent no heap then
+if([PTBR+4]==-1 ) then
+	multipush(R0,R11,R10);
+	R1=GET_FREE_PAGE;
+	call MOD_2;//call get free page
+	[PTBR+4]=R0;
+	[PTBR+5]="0110";
+	
+	
+	R1=GET_FREE_PAGE;
+	call MOD_2;//call get free page
+	[PTBR+4]=R0;
+	[PTBR+5]="0110";
+	multipop(R0,R11,R10);
+endif;
+
+//child 2 new stack && user area page
+
+multipush(R0,R11,R10);
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[PAGE_TABLE_BASE + cpid*20 +16]=R0;
+[PAGE_TABLE_BASE + cpid*20 +17]="0110";
+
+
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[PAGE_TABLE_BASE + cpid*20 +18]=R0;
+[PAGE_TABLE_BASE + cpid*20 +19]="0110";
+multipop(R0,R11,R10);
+
+//userarea page set for child
+
+multipush(R0,R11,R10);
+R1=GET_FREE_PAGE;
+call MOD_2;//call get free page
+[PROCESS_TABLE+cpid*16+11]=R0;//USER AREA PAGE NO
+multipop(R0,R11,R10);
+
+//initiallise process table for child
+[PROCESS_TABLE+cpid*16+0]=0;//tick
+[PROCESS_TABLE+cpid*16+2]=currentPID;//ppid
+[PROCESS_TABLE+cpid*16+3]=[PROCESS_TABLE+currentPID*16+3];//userid
+[PROCESS_TABLE+cpid*16+4]=CREATED;//STATE
+[PROCESS_TABLE+cpid*16+6]=[PROCESS_TABLE+currentPID*16+4];//swap
+[PROCESS_TABLE+cpid*16+7]=[PROCESS_TABLE+currentPID*16+7];//inode index;
+[PROCESS_TABLE+cpid*16+9]=0;//mode
+[PROCESS_TABLE+cpid*16+10]=[PROCESS_TABLE+currentPID*16+10];//user area swap status
+[PROCESS_TABLE+cpid*16+12]=0;//kptr
+[PROCESS_TABLE+cpid*16+13]=[PROCESS_TABLE+currentPID*16+13];//uptr
+
+[PROCESS_TABLE+cpid*16+14]=PAGE_TABLE_BASE +20*cpid;
+
+//PER PROCESS resource TABLE FOR PARENT AND CHILD SAME!
+alias i R4;
+i=0;
+while(i<16) do
+	[PAGE_TABLE_BASE+cpid*20+i]=[PAGE_TABLE_BASE +currentPID*20+i];
+	i=i+1;
+endwhile;
+
+//PER PROCESS DISK MAP TABLE SAME
+
+i=0;
+while(i<10) do
+	[DISK_MAP_TABLE +cpid*10 +i]=[DISK_MAP_TABLE+[SYSTEM_STATUS_TABLE+1]*10+i];
+	i=i+1;
+endwhile;
+
+
+//initialise pre process page table
+//copy heap code library page ptbr 
+
+
+//increase to indicate shared
+i=4;
+while(i<16) do
+	if([PAGE_TABLE_BASE+cpid*20+i]!=-1) then
+		[MEMORY_FREE_LIST+[PAGE_TABLE_BASE+cpid*20+i]]=[MEMORY_FREE_LIST+[PAGE_TABLE_BASE+cpid*20+i]]+1;
+	endif;
+	i=i+2;
+endwhile;
+
+//copy user stack into kernel stack
+i=0;
+while(i<512) do
+	[[PAGE_TABLE_BASE+cpid*20+16]*512+i]=[[PAGE_TABLE_BASE +currentPID*20+16]*512+i];
+	i=i+1;
+endwhile;
+
+i=0;
+while(i<512) do
+	[[PAGE_TABLE_BASE+cpid*20+18]*512+i]=[[PAGE_TABLE_BASE +currentPID*20+18]*512+i];
+	i=i+1;
+endwhile;
+
+
+if([PROCESS_TABLE+cpid*16+11]!=-1) then
+	[[PROCESS_TABLE +cpid*16+11]*512]=BP;
+endif;
+
+alias returnAddr R2;
+returnAddr = [PROCESS_TABLE + currentPID*16 + 13] - 1;
+[[PTBR + 2*(returnAddr / 512)]*512 + (returnAddr % 512)] = cpid;
+
+returnAddr = [PROCESS_TABLE + cpid*16 + 13] - 1;
+[[[PROCESS_TABLE + 16*cpid + 14] + 2*(returnAddr / 512)]*512 + (returnAddr % 512)] = 0;
+
+[PROCESS_TABLE + currentPID*16 + 9] = 0;
+SP = [PROCESS_TABLE + [SYSTEM_STATUS_TABLE  + 1]*16 +  13];
+
+breakpoint;
+ireturn;
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

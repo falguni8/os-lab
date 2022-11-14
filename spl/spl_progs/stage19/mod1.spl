@@ -1,0 +1,80 @@
+alias fno R1;
+//free user area page
+breakpoint;
+if(fno==FREE_USER_AREA_PAGE)then
+	
+	multipush(R0,R1,R2);
+	R1=RELEASE_PAGE;
+	R2=[PROCESS_TABLE +R2*16+11];
+	call MOD_2;
+	multipop(R0,R1,R2);
+	return;
+endif;
+
+if(fno==EXIT_PROCESS) then
+	//freepage table->to deallocate
+	//free user area page
+	alias currentPID R2;
+	multipush(R1,R2);
+	R1=FREE_PAGE_TABLE;
+	call MOD_1;
+	multipop(R1,R2);
+
+	multipush(R1,R2);
+	R1=FREE_USER_AREA_PAGE;
+	call MOD_1;
+	multipop(R1,R2);
+	
+	[PROCESS_TABLE+currentPID*16+4]=TERMINATED;
+	return;
+endif;
+
+if(R1==FREE_PAGE_TABLE) then
+breakpoint;
+	//INVALIDATING LIBRARY PAGES
+	alias currentPID R2;
+	alias ptbr R3;
+	ptbr=[PROCESS_TABLE+currentPID*16+14];//PTBR;
+	alias i R4;
+	[ptbr+0]=-1;
+	[ptbr+1]="0000";
+	[ptbr+2]=-1;
+	[ptbr+3]="0000";
+	
+	i=2;
+	while(i<10) do
+		if([ptbr+2*i]!=-1) then
+			//invoke release page
+			multipush(R1,R2,R3,R4);
+			R1=RELEASE_PAGE;
+			R2=[ptbr+2*i];
+			call MOD_2;	
+			multipop(R1,R2,R3,R4);
+		endif;
+			[ptbr+2*i]=-1;
+			[ptbr+2*i+1]="0000";
+		i=i+1;
+	endwhile;
+	i=0;
+	//heap && stack
+	while (i< 10) do
+		if(i==2||i==3||i==8||i==9)then
+			if([DISK_MAP_TABLE+10*currentPID+i]!=-1)then
+		        multipush (R1, R2, R3,R4, R5);
+		        R1 = 4;
+		        R2 = [DISK_MAP_TABLE + 10*currentPID + i];
+		        call MEMORY_MANAGER;
+		        multipop (R1, R2, R3,R4, R5);
+		    endif;
+		endif;
+		[DISK_MAP_TABLE + currentPID*10 + i] = -1;
+
+		i=i + 1;
+	    endwhile;
+
+	    breakpoint;
+	    return;
+endif;
+
+
+

@@ -2,6 +2,7 @@ breakpoint;
 alias fno R1;
 alias memfreed R2;
 if(fno==GET_FREE_PAGE)then
+	breakpoint;
 	//inc wait mem count+1;
 	[SYSTEM_STATUS_TABLE+3]=[SYSTEM_STATUS_TABLE+3]+1;
 	while([SYSTEM_STATUS_TABLE+2]==0) do //mem free count==0
@@ -23,11 +24,13 @@ if(fno==GET_FREE_PAGE)then
 		i=i+1;
 	endwhile;
 	R0=i;
+	breakpoint;
 	return;
 endif;
 
 if(fno==RELEASE_PAGE) then
 	//R2->PAGE TO BE RELEASED
+	breakpoint;
 	[MEMORY_FREE_LIST+memfreed]=[MEMORY_FREE_LIST+memfreed]-1;//
 	if(([MEMORY_FREE_LIST+memfreed]==0))then
 		[SYSTEM_STATUS_TABLE+2]=[SYSTEM_STATUS_TABLE+2]+1;
@@ -40,6 +43,7 @@ if(fno==RELEASE_PAGE) then
 			j=j+1;
 		endwhile;
 	endif;
+	breakpoint;
 	return;
 endif;
 return;
